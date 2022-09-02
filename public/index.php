@@ -7,6 +7,7 @@ use Slim\Factory\AppFactory;
 use DI\Container;
 use App\Validator;
 use Slim\Middleware\MethodOverrideMiddleware;
+use Slim\Exception\NotFoundException;
 
 use function Symfony\Component\String\s;
 
@@ -83,55 +84,54 @@ $app->post('/users', function ($request, $response) use ($repo, $router) {
 $app->get('/users/{id}', function ($request, $response, $args) {
     $params = ['id' => $args['id'], 'nickname' => 'user-' . $args['id']];
     return $this->get('renderer')->render($response, 'users/show.phtml', $params);
-});
-$app->run();
+})->setName('users.show');
+
 ///////////////////////////////////////////////////////////////////////////////////
 ///                   ФОРМА ОБНОВЛЕНИЯ ДАННЫХ ПОЛЬЗОВАТЕЛЯ                      ///
 ///////////////////////////////////////////////////////////////////////////////////
 
 $app->get('/users/{id}/edit', function ($request, $response, array $args) use ($repo) {
-    dd('test');
+
     $user = $repo->find($args['id']); // id пользователя
     $params = [
         'user' => $user,
         'errors' => []
     ];
     return $this->get('renderer')->render($response, 'users/edit.phtml', $params);
-});
+})->setName('users.edit');
 
 ///////////////////////////////////////////////////////////////////////////////////
 ///                       ОБНОВЛЕНИЕ ДАННЫХ ПОЛЬЗОВАТЕЛЯ                        ///
 ///////////////////////////////////////////////////////////////////////////////////
-$app->patch('/users/{id}', function ($request, $response, array $args) use ($router) {
-    $id = $args['id'];
-    $users = json_decode($request->getCookieParam('users', json_encode([])), true);
-    $updateUser = $request->getParsedBodyParam('user'); //новые данные 
+$app->patch('/users/{id}', function ($request, $response, array $args) use ($router, $repo) {
+    $user = $repo->find($args['id']);
     $validator = new Validator();
+    $updateUser = $request->getParsedBodyParam('user');
     $errors = $validator->validate($updateUser);
-
+    
     if (count($errors) === 0) {
-        $userUp = collect($users)->map(function ($item, $key) use ($id, $updateUser) {
-            if ($id == $item['id']) {
-                $updateUser['id'] = $id;
-                return $updateUser;
-            }
-            return $item;
-        }); //меняем старые данные на новые
-
-        $this->get('flash')->addMessage('success', 'User has been updated');
-
-        $url = $router->urlFor('get-users');
-        $userUncode = json_encode($userUp);
-        return $response->withHeader('Set-Cookie', "users={$userUncode}")
-            ->withRedirect($url);
+        $user['name'] = $updateUser['name'];
+        $user['email'] = $updateUser['email'];
+        $user['password'] = $updateUser['password'];
+        $repo->save($user);
+        $this->get('flash')->addMessage('success', 'Пользователь был обновлен');
+        return $response->withRedirect($router->urlFor('users.index'));
     }
 
     $params = [
-        'errors' => $errors,
-        'data' => $updateUser,
-        'userID' => $id
+        'user' => $updateUser,
+        'errors' => $errors
     ];
+    $response = $response->withStatus(422);
+    return $this->get('renderer')->render($response, 'users/edit.phtml', $params);
+})->setName('users.update');
+///////////////////////////////////////////////////////////////////////////////////
+///                            УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ                            ///
+///////////////////////////////////////////////////////////////////////////////////
+$app->delete('/users/{id}', function ($request, $response, array $args) use ($repo, $router) {
+    $repo->destroy($args['id']);
+    $this->get('flash')->addMessage('success', 'Пользователь был удален');
+    return $response->withRedirect($router->urlFor('users.index'));
+})->setName('users.delete');
 
-    return $this->get('renderer')
-        ->render($response->withStatus(422), 'users/edit.phtml', $params);
-});
+$app->run();

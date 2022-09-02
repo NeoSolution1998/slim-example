@@ -14,13 +14,18 @@ class UserRepository
         return array_values($_SESSION);
     }
 
-    public function find(int $id)
+    public function find(string $id)
     {
         if (!isset($_SESSION[$id])) {
             throw new \Exception("Wrong course id: {$id}");
         }
 
         return $_SESSION[$id];
+    }
+
+    public function destroy(string $id)
+    {
+        unset($_SESSION[$id]);
     }
 
     public function save(array $item)

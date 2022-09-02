@@ -43,13 +43,13 @@
                                 </form>
                             </td>
                             <td class="table-light">
-                                <form action="/users/<?= htmlspecialchars($user['id']) ?>/edit">
+                                <form action="users/<?= htmlspecialchars($user['id']) ?>/edit">
                                     <input class="btn btn-primary btn-sm" style="height:30px;width:70px" type="submit" value="update">
                                 </form>
                             </td>
 
                             <td class="table-light">
-                                <form action="/users/<?= htmlspecialchars($user['id']) ?>" method="post">
+                                <form action="users/<?= htmlspecialchars($user['id']) ?>" method="post">
                                     <input type="hidden" name="_METHOD" value="DELETE">
                                     <input class="btn btn-primary btn-sm" style="height:30px;width:70px" type="submit" value="delete">
                                 </form>
